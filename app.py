@@ -6,7 +6,7 @@ import requests
 import json
 import os
 from datetime import datetime
-from openai import OpenAI
+import openai
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -22,8 +22,16 @@ ZOHO_REPORTS_FOLDER_ID = os.getenv('ZOHO_REPORTS_FOLDER_ID', 'your-reports-folde
 ZOHO_VETREPORTS_FOLDER_ID = os.getenv('ZOHO_VETREPORTS_FOLDER_ID', 'your-vetreports-folder-id')
 ZOHO_MAIL_FROM = os.getenv('ZOHO_MAIL_FROM', 'sgt@vetletters.com')
 
-# Initialize OpenAI client
-openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY != 'your-openai-key-here' else None
+# Initialize OpenAI - compatible with both old and new versions
+try:
+    from openai import OpenAI
+    openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY != 'your-openai-key-here' else None
+    USE_NEW_OPENAI = True
+except ImportError:
+    # Fallback to old version
+    openai.api_key = OPENAI_API_KEY
+    openai_client = None
+    USE_NEW_OPENAI = False
 
 @app.route('/', methods=['GET'])
 def health_check():
@@ -258,10 +266,10 @@ def get_sample_medical_text():
     """
 
 def analyze_medical_records(medical_text, veteran_info):
-    """Analyze medical records using OpenAI"""
+    """Analyze medical records using OpenAI - compatible with both old and new versions"""
     try:
-        if not openai_client:
-            print("❌ OpenAI client not initialized, using sample analysis")
+        if OPENAI_API_KEY == 'your-openai-key-here':
+            print("❌ OpenAI API key not configured, using sample analysis")
             return get_sample_analysis(veteran_info)
         
         analysis_prompt = f"""
@@ -323,24 +331,42 @@ Please provide your analysis in this EXACT JSON format:
 Focus on maximizing benefits using the benefit-of-the-doubt doctrine. Include specific CFR citations and actionable recommendations.
 """
 
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system", 
-                    "content": "You are a Senior VA Claims Rater with complete mastery of 38 CFR Part 4 and M21-1 manual. Always respond with valid JSON only."
-                },
-                {
-                    "role": "user", 
-                    "content": analysis_prompt
-                }
-            ],
-            max_tokens=3000,
-            temperature=0.1
-        )
-        
-        # Parse JSON response
-        analysis_json = response.choices[0].message.content
+        # Try new OpenAI client first, fall back to old version
+        if USE_NEW_OPENAI and openai_client:
+            response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": "You are a Senior VA Claims Rater with complete mastery of 38 CFR Part 4 and M21-1 manual. Always respond with valid JSON only."
+                    },
+                    {
+                        "role": "user", 
+                        "content": analysis_prompt
+                    }
+                ],
+                max_tokens=3000,
+                temperature=0.1
+            )
+            analysis_json = response.choices[0].message.content
+        else:
+            # Use old OpenAI version
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": "You are a Senior VA Claims Rater with complete mastery of 38 CFR Part 4 and M21-1 manual. Always respond with valid JSON only."
+                    },
+                    {
+                        "role": "user", 
+                        "content": analysis_prompt
+                    }
+                ],
+                max_tokens=3000,
+                temperature=0.1
+            )
+            analysis_json = response.choices[0].message.content
         
         # Clean up JSON if needed
         if '```json' in analysis_json:
