@@ -14,7 +14,8 @@ app = Flask(__name__)
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'your-openai-key-here')
 ZOHO_ACCESS_TOKEN = os.getenv('ZOHO_ACCESS_TOKEN', 'your-zoho-token')
 ZOHO_REPORTS_FOLDER_ID = os.getenv('ZOHO_REPORTS_FOLDER_ID', 'your-reports-folder-id')
-ZOHO_MAIL_FROM = os.getenv('ZOHO_MAIL_FROM', 'noreply@yourcompany.com')
+ZOHO_VETREPORTS_FOLDER_ID = os.getenv('ZOHO_VETREPORTS_FOLDER_ID', 'your-vetreports-folder-id')
+ZOHO_MAIL_FROM = os.getenv('ZOHO_MAIL_FROM', 'sgt@vetletters.com')
 
 @app.route('/', methods=['GET'])
 def health_check():
@@ -665,7 +666,11 @@ def generate_html_report(analysis, veteran_info):
     """
     
     return report_html
-
+# Upload parameters
+data = {
+    'parent_id': ZOHO_VETREPORTS_FOLDER_ID,  # Change this line
+    'override-name-exist': 'true'
+}
 def upload_report_to_workdrive(report_html, veteran_info):
     """Upload HTML report to WorkDrive and create public share link"""
     try:
