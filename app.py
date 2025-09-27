@@ -687,8 +687,6 @@ RECENT MEDICAL NOTES:
 - Sleep apnea symptoms documented but not yet studied
 
 MEDICATIONS:
-- Sertraline 100mg daily for depression/anxiety
-- Prazosin 2mg for nightmares
 - Trazodone as needed for sleep
 - Lisinopril for hypertension
 
